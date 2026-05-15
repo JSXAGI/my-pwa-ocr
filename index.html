@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>安心・安全 OCRエディタ</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+	<link rel="manifest" href="manifest.json">
+    <style>
+        /* ④ UIを端正に整える */
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        h1 { text-align: center; color: #1a73e8; font-size: 24px; }
+        .upload-section { border: 2px dashed #cbd5e0; padding: 40px; text-align: center; border-radius: 8px; cursor: pointer; transition: 0.3s; }
+        .upload-section:hover { background: #edf2f7; border-color: #4a5568; }
+        #preview { max-width: 100%; margin-top: 20px; border-radius: 8px; display: none; }
+        #output { width: 100%; height: 200px; margin-top: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; resize: vertical; }
+        .status { margin-top: 10px; font-weight: bold; color: #718096; }
+        button { background: #1a73e8; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; cursor: pointer; width: 100%; margin-top: 10px; }
+        button:disabled { background: #a0aec0; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🔍 安心・安全 OCRエディタ</h1>
+    <p style="text-align:center; font-size:14px; color:green;">※画像はサーバーに送信されず、あなたのデバイス内だけで解析されます。</p>
+
+    <div class="upload-section" onclick="document.getElementById('file-input').click()">
+        <span id="upload-label">📸 クリックして撮影、または画像を選択</span>
+        <input type="file" id="file-input" accept="image/*" capture="environment" style="display:none;">
+        <img id="preview">
+    </div>
+
+    <div id="status" class="status"></div>
+    <textarea id="output" placeholder="解析結果がここに表示されます..."></textarea>
+    
+    <button id="copy-btn" onclick="copyText()">結果をコピー</button>
+</div>
+
+<script>
+    const fileInput = document.getElementById('file-input');
+    const output = document.getElementById('output');
+    const status = document.getElementById('status');
+    const preview = document.getElementById('preview');
+
+    fileInput.onchange = function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // プレビュー表示
+        preview.src = URL.createObjectURL(file);
+        preview.style.display = 'block';
+        document.getElementById('upload-label').style.display = 'none';
+
+        // ① & ② 解析開始（デバイス内で完結！）
+        status.innerText = "🔍 解析中（デバイス内で処理しています）...";
+        output.value = "";
+
+        Tesseract.recognize(
+            file,
+            'jpn+eng',
+            { logger: m => {
+                if(m.status === 'recognizing text') {
+                    status.innerText = `解析中: ${Math.round(m.progress * 100)}%`;
+                }
+            }}
+        ).then(({ data: { text } }) => {
+            status.innerText = "✅ 解析完了！";
+            output.value = text;
+        }).catch(err => {
+            status.innerText = "❌ エラーが発生しました";
+            console.error(err);
+        });
+    };
+
+    function copyText() {
+        output.select();
+        document.execCommand('copy');
+        alert('コピーしました！');
+    }
+</script>
+
+</body>
+</html>
