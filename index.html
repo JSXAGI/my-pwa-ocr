@@ -9,13 +9,19 @@
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f8f9fa; margin: 0; padding: 15px; color: #333; }
         .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: #1a73e8; font-size: 20px; margin-bottom: 10px; }
+        h1 { text-align: center; color: #1a73e8; font-size: 22px; margin-bottom: 5px; }
         .security-note { text-align: center; font-size: 12px; color: #28a745; margin-bottom: 20px; font-weight: bold; }
+        
+        /* ボタンのデザイン */
+        .btn-main { display: block; width: 100%; padding: 15px; border: none; border-radius: 12px; font-size: 17px; font-weight: bold; cursor: pointer; margin-bottom: 12px; color: white; transition: opacity 0.2s; }
+        .btn-camera { background: #34a853; } /* 緑：カメラ */
+        .btn-gallery { background: #4285f4; } /* 青：写真選択 */
+        .btn-copy { background: #1a73e8; margin-top: 20px; } /* 濃い青：コピー */
+        .btn-main:active { opacity: 0.8; }
+
         #preview { width: 100%; margin-top: 15px; border-radius: 8px; display: none; border: 1px solid #ddd; }
-        #output { width: 100%; height: 180px; margin-top: 15px; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; box-sizing: border-box; background: #fff; }
-        .status { margin-top: 10px; font-size: 14px; color: #666; text-align: center; height: 20px; }
-        button { background: #1a73e8; color: white; border: none; padding: 15px; border-radius: 8px; font-size: 16px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 15px;}
-        button:active { background: #1557b0; }
+        #output { width: 100%; height: 200px; margin-top: 15px; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; box-sizing: border-box; background: #fff; line-height: 1.5; }
+        .status { margin-top: 10px; font-size: 14px; color: #666; text-align: center; font-weight: bold; }
         .copy-info { text-align: center; font-size: 12px; color: #888; margin-top: 8px; }
     </style>
 </head>
@@ -25,36 +31,45 @@
     <h1>🔍 安心・安全 OCR</h1>
     <div class="security-note">🛡️ サーバー送信なし・完全プライベート</div>
 
-    <div style="text-align: center; padding: 10px;">
-        <p style="font-size: 14px; color: #666; margin-bottom: 10px;">↓ ボタンを押して撮影または選択 ↓</p>
-        
-        <input type="file" id="file-input" accept="image/*" capture="environment" style="font-size: 16px; width: 100%;">
-        
-        <img id="preview" alt="プレビュー">
+    <div style="margin-bottom: 20px;">
+        <button class="btn-main btn-camera" onclick="document.getElementById('camera-input').click()">
+            📸 カメラを起動して撮影
+        </button>
+        <input type="file" id="camera-input" accept="image/*" capture="environment" style="display:none;">
+
+        <button class="btn-main btn-gallery" onclick="document.getElementById('file-input').click()">
+            🖼️ 保存した写真から選ぶ
+        </button>
+        <input type="file" id="file-input" accept="image/*" style="display:none;">
     </div>
 
-    <div id="status" class="status"></div>
-    <textarea id="output" placeholder="ここに文字が出ます..."></textarea>
+    <div id="status" class="status">画像を読み込んでください</div>
     
-    <button onclick="copyText()">結果をコピー</button>
+    <img id="preview" alt="プレビュー">
+
+    <textarea id="output" placeholder="ここに文字が起こされます..."></textarea>
+    
+    <button class="btn-main btn-copy" onclick="copyText()">結果をコピー</button>
     <div class="copy-info">コピーしてメールやメモに貼り付け！</div>
 </div>
 
 <script>
+    const cameraInput = document.getElementById('camera-input');
     const fileInput = document.getElementById('file-input');
     const output = document.getElementById('output');
     const status = document.getElementById('status');
     const preview = document.getElementById('preview');
 
-    fileInput.onchange = function(e) {
-        const file = e.target.files[0];
+    // 共通の解析処理
+    function handleFile(file) {
         if (!file) return;
 
         // プレビュー表示
         preview.src = URL.createObjectURL(file);
         preview.style.display = 'block';
 
-        status.innerText = "⏳ 解析準備中...";
+        status.innerText = "⏳ 解析中...（初回は30秒ほどかかります）";
+        status.style.color = "#f4b400";
         output.value = "";
 
         Tesseract.recognize(
@@ -66,23 +81,32 @@
                 }
             }}
         ).then(({ data: { text } }) => {
-            status.innerText = "✅ 完了！";
+            status.innerText = "✅ 完了しました！";
+            status.style.color = "#28a745";
             output.value = text;
         }).catch(err => {
             console.error(err);
             status.innerText = "❌ エラーが発生しました";
+            status.style.color = "#d93025";
         });
-    };
+    }
 
+    // カメラ入力時の反応
+    cameraInput.onchange = (e) => handleFile(e.target.files[0]);
+    // ファイル選択時の反応
+    fileInput.onchange = (e) => handleFile(e.target.files[0]);
+
+    // コピー機能
     function copyText() {
         if (!output.value) return;
         output.select();
-        output.setSelectionRange(0, 99999);
+        output.setSelectionRange(0, 99999); // スマホ用
         navigator.clipboard.writeText(output.value)
             .then(() => alert('コピーしました！'))
             .catch(() => alert('コピーに失敗しました'));
     }
 
+    // サービスワーカー登録
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('./sw.js')
